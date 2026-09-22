@@ -1,0 +1,88 @@
+[
+  {
+    "name": "weather",
+    "requiresAuth": false,
+    "widgets": [
+      {
+        "name": "city_temperature",
+        "description": "Affiche la temperature actuelle et le ciel pour une ville",
+        "params": [
+          { "name": "city", "type": "string" }
+        ]
+      },
+      {
+        "name": "forecast",
+        "description": "Affiche les previsions sur plusieurs jours pour une ville",
+        "params": [
+          { "name": "city", "type": "string" },
+          { "name": "days", "type": "integer" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "crypto",
+    "requiresAuth": false,
+    "widgets": [
+      {
+        "name": "price",
+        "description": "Affiche le prix actuel d'une cryptomonnaie dans une devise donnee",
+        "params": [
+          { "name": "coin", "type": "string" },
+          { "name": "currency", "type": "string" }
+        ]
+      },
+      {
+        "name": "price_history",
+        "description": "Affiche l'historique de prix d'une cryptomonnaie sur N jours",
+        "params": [
+          { "name": "coin", "type": "string" },
+          { "name": "days", "type": "integer" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "github",
+    "requiresAuth": true,
+    "widgets": [
+      {
+        "name": "recent_commits",
+        "description": "Affiche les derniers commits d'un depot",
+        "params": [
+          { "name": "repo", "type": "string" },
+          { "name": "count", "type": "integer" }
+        ]
+      },
+      {
+        "name": "repo_list",
+        "description": "Affiche la liste des depots d'un utilisateur",
+        "params": [
+          { "name": "username", "type": "string" },
+          { "name": "sort", "type": "string" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "rss",
+    "requiresAuth": false,
+    "widgets": [
+      {
+        "name": "article_list",
+        "description": "Affiche les derniers articles d'un flux RSS",
+        "params": [
+          { "name": "link", "type": "string" },
+          { "name": "number", "type": "integer" }
+        ]
+      },
+      {
+        "name": "feed_preview",
+        "description": "Affiche un apercu court du dernier article d'un flux RSS",
+        "params": [
+          { "name": "link", "type": "string" }
+        ]
+      }
+    ]
+  }
+]
