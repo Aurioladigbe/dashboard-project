@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            Int                   @id @default(autoincrement())
+  email         String                @unique
+  username      String
+  password      String? // null si inscription via OAuth uniquement
+  role          Role                  @default(USER)
+  confirmed     Boolean               @default(false)
+  createdAt     DateTime              @default(now())
+  oauthAccounts OAuthAccount[]
+  subscriptions ServiceSubscription[]
+  widgets       WidgetInstance[]
+}
+
+// Lie un compte tiers (GitHub, Google...) a un utilisateur de la plateforme
+model OAuthAccount {
+  id         Int    @id @default(autoincrement())
+  provider   String // "github", "google"
+  providerId String // id du compte chez le provider
+  userId     Int
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+}
+
+model ServiceSubscription {
+  id          Int      @id @default(autoincrement())
+  service     String // "weather", "crypto", "github", "rss"
+  credentials Json? // tokens/cles chiffres si le service en demande
+  createdAt   DateTime @default(now())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, service])
+}
+
+model WidgetInstance {
+  id          Int      @id @default(autoincrement())
+  service     String // "weather"
+  type        String // "city_temperature"
+  config      Json // { "city": "Cotonou" }
+  refreshRate Int      @default(60) // secondes
+  x           Int      @default(0)
+  y           Int      @default(0)
+  w           Int      @default(3)
+  h           Int      @default(2)
+  createdAt   DateTime @default(now())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

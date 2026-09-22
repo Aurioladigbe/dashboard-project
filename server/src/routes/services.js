@@ -1,0 +1,53 @@
+import { Router } from "express";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { prisma } from "../config/db.js";
+import { requireAuth } from "../middleware/auth.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const servicesPath = path.join(__dirname, "..", "config", "services.json");
+
+const router = Router();
+
+// GET /api/services — catalogue complet (public + description, utilise par le frontend
+// pour generer les formulaires de configuration des widgets)
+router.get("/", (req, res) => {
+  const services = JSON.parse(fs.readFileSync(servicesPath, "utf-8"));
+  res.json({ services });
+});
+
+// GET /api/services/mine — services auxquels l'utilisateur connecte est abonne
+router.get("/mine", requireAuth, async (req, res) => {
+  const subs = await prisma.serviceSubscription.findMany({
+    where: { userId: req.user.id },
+    select: { service: true, createdAt: true },
+  });
+  res.json({ subscriptions: subs });
+});
+
+// POST /api/services/:service/subscribe
+// body: { credentials?: {...} } — pour les services necessitant un compte externe
+router.post("/:service/subscribe", requireAuth, async (req, res) => {
+  const { service } = req.params;
+  const { credentials } = req.body;
+
+  const sub = await prisma.serviceSubscription.upsert({
+    where: { userId_service: { userId: req.user.id, service } },
+    update: { credentials },
+    create: { userId: req.user.id, service, credentials },
+  });
+
+  res.status(201).json({ subscription: sub });
+});
+
+// DELETE /api/services/:service/subscribe
+router.delete("/:service/subscribe", requireAuth, async (req, res) => {
+  const { service } = req.params;
+  await prisma.serviceSubscription
+    .delete({ where: { userId_service: { userId: req.user.id, service } } })
+    .catch(() => null);
+  res.status(204).send();
+});
+
+export default router;
