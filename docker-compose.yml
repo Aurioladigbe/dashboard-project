@@ -19,6 +19,8 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    env_file:
+      - ./server/.env
     environment:
       DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
       JWT_SECRET: change-me-in-env

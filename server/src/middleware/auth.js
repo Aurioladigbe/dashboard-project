@@ -10,6 +10,12 @@ export function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (payload.purpose) {
+      // Un token special (ex: confirmation d'email) n'est pas une session valide.
+      return res.status(401).json({ error: "Token invalide" });
+    }
+
     req.user = payload; // { id, email, role }
     next();
   } catch {

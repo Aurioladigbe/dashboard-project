@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment variables (only .env.example files are meant to be committed)
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+*.log
+
+# Build output
+client/dist/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+.vscode/
+.idea/
