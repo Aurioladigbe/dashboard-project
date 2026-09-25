@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { prisma } from "../config/db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { getCurrentTemperature, getForecast } from "../services/weatherService.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const servicesPath = path.join(__dirname, "..", "config", "services.json");
@@ -22,6 +23,14 @@ const WIDGET_SELECT = {
   y: true,
   w: true,
   h: true,
+};
+
+// Registre extensible des sources de donnees par "service:type".
+// Pour ajouter un futur service (crypto, github, rss), il suffit d'ajouter
+// ses cles "service:type" ici sans toucher a la route GET /:id/data.
+const WIDGET_DATA_HANDLERS = {
+  "weather:city_temperature": (config) => getCurrentTemperature(config.city),
+  "weather:forecast": (config) => getForecast(config.city, config.days),
 };
 
 function validateWidgetParams(widgetDef, config) {
@@ -50,6 +59,40 @@ router.get("/", async (req, res) => {
     orderBy: { id: "asc" },
   });
   res.json({ widgets });
+});
+
+// GET /api/widgets/:id/data — recupere les donnees live d'un widget
+router.get("/:id/data", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: "Identifiant de widget invalide" });
+  }
+
+  const widget = await prisma.widgetInstance.findFirst({
+    where: { id, userId: req.user.id },
+  });
+  if (!widget) {
+    return res.status(404).json({ error: "Widget introuvable" });
+  }
+
+  const handlerKey = `${widget.service}:${widget.type}`;
+  const handler = WIDGET_DATA_HANDLERS[handlerKey];
+
+  if (!handler) {
+    return res.status(501).json({
+      error: "Ce type de widget n'a pas encore de source de données",
+    });
+  }
+
+  try {
+    const data = await handler(widget.config, widget, req.user);
+    return res.json({ data });
+  } catch (err) {
+    const status = err.status || 502;
+    const message =
+      err.message || "Erreur lors de la récupération des données du service externe";
+    return res.status(status).json({ error: message });
+  }
 });
 
 // POST /api/widgets — ajoute une instance de widget
