@@ -6,6 +6,7 @@ import { prisma } from "../config/db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { getCurrentTemperature, getForecast } from "../services/weatherService.js";
 import { getRecentCommits, getRepoList } from "../services/githubService.js";
+import { getArticleList, getFeedPreview } from "../services/rssService.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const servicesPath = path.join(__dirname, "..", "config", "services.json");
@@ -34,6 +35,8 @@ const WIDGET_DATA_HANDLERS = {
   "weather:forecast": (config) => getForecast(config.city, config.days),
   "github:recent_commits": (config) => getRecentCommits(config.repo, config.count),
   "github:repo_list": (config) => getRepoList(config.username, config.sort),
+  "rss:article_list": (config) => getArticleList(config.link, config.number),
+  "rss:feed_preview": (config) => getFeedPreview(config.link),
 };
 
 function validateWidgetParams(widgetDef, config) {
