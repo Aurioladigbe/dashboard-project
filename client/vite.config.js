@@ -11,4 +11,9 @@ export default defineConfig({
       "/about.json": "http://server:8080",
     },
   },
+  test: {
+    environment: "jsdom",
+    setupFiles: "./src/setupTests.js",
+    globals: true,
+  },
 });

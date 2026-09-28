@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: dashboard
       POSTGRES_PASSWORD: dashboard
       POSTGRES_DB: dashboard
+    ports:
+      - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -22,9 +24,12 @@ services:
     env_file:
       - ./server/.env
     environment:
+      # Seule DATABASE_URL doit rester forcee ici : a l'interieur du reseau Docker
+      # le nom d'hote de la base est "db" (nom du service), alors que .env.example
+      # met "localhost" pour un usage hors Docker (ex: Prisma Studio en local).
+      # JWT_SECRET et PORT viennent desormais de server/.env via env_file, pour ne
+      # pas ecraser silencieusement la valeur que chacun met dans son .env local.
       DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
-      JWT_SECRET: change-me-in-env
-      PORT: 8080
     depends_on:
       db:
         condition: service_healthy

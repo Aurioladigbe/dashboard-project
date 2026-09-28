@@ -1,27 +1,43 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./context/ProtectedRoute";
+import { TimerProvider } from "./context/TimerContext";
+import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Services from "./pages/Services";
+
+// Tout ce qui demande d'être connecté : barre de navigation + Timer des widgets.
+function AppShell() {
+  return (
+    <TimerProvider>
+      <Layout>
+        <Outlet />
+      </Layout>
+    </TimerProvider>
+  );
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route
-            path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <AppShell />
               </ProtectedRoute>
             }
-          />
-          {/* TODO: /services, /profile, /admin */}
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/services" element={<Services />} />
+            {/* TODO (jours 10-11): /profile, /admin */}
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

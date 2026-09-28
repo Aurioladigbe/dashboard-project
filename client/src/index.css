@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-slate-950 text-slate-100;
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ink-900 font-body text-white antialiased;
+  }
+
+  /* Anneau de focus double (sombre + blanc) : visible sur fond sombre comme
+     sur les bandes de couleur des widgets. */
+  :focus-visible {
+    outline: 2px solid #060b3d;
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px #ffffff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .skip-link {
+    @apply absolute left-3 top-3 z-50 -translate-y-20 rounded bg-white px-3 py-2 text-sm font-semibold text-ink-950 focus:translate-y-0;
+  }
+}
+
+/* Poignée de redimensionnement de la grille, aux couleurs de la charte */
+.react-grid-item > .react-resizable-handle::after {
+  border-color: #060b3d !important;
+  opacity: 0.7;
+}
+.react-grid-item.react-grid-placeholder {
+  background: #00ff9c !important;
+  opacity: 0.18 !important;
+  border-radius: 6px;
 }
