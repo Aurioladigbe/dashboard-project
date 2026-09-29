@@ -84,7 +84,7 @@ describe("vues des widgets", () => {
   it("crypto : prix et variation (contrat proposé)", () => {
     view("crypto:price", { coin: "bitcoin", currency: "usd", price: 64250.5, change24h: -2.5 });
     expect(screen.getByText(/64\s?250,50/)).toBeInTheDocument();
-    expect(screen.getByText(/En baisse de 2\.50 %/)).toBeInTheDocument();
+    expect(screen.getByText(/En baisse de 2,50 %/)).toBeInTheDocument();
   });
 
   it("crypto : historique = courbe accessible + prix courant (contrat proposé)", () => {
@@ -98,7 +98,7 @@ describe("vues des widgets", () => {
       ],
     });
     expect(screen.getByRole("img", { name: /Évolution du prix de bitcoin/ })).toBeInTheDocument();
-    expect(screen.getByText(/\+10\.0 % sur la période/)).toBeInTheDocument();
+    expect(screen.getByText(/En hausse de 10,0 % sur la période/)).toBeInTheDocument();
   });
 
   it("listes vides : message clair", () => {

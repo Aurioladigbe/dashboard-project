@@ -4,21 +4,30 @@
 // (avec ses noms techniques), donc ajouter un widget côté serveur ne casse rien.
 
 export const SERVICE_META = {
-  weather: { label: "Météo", band: "bg-tile-weather", text: "text-tile-weather", defaultRefresh: 600 },
-  crypto: { label: "Crypto", band: "bg-tile-crypto", text: "text-tile-crypto", defaultRefresh: 60 },
-  github: { label: "GitHub", band: "bg-tile-github", text: "text-tile-github", defaultRefresh: 300 },
-  rss: { label: "Flux RSS", band: "bg-tile-rss", text: "text-tile-rss", defaultRefresh: 300 },
+  weather: { label: "Météo", light: "#6CB8FF", text: "text-light-sky", icon: "sun", defaultRefresh: 600 },
+  crypto: { label: "Crypto", light: "#FFA657", text: "text-light-ember", icon: "coin", defaultRefresh: 60 },
+  github: { label: "GitHub", light: "#C58CFF", text: "text-light-orchid", icon: "branch", defaultRefresh: 300 },
+  rss: { label: "Flux RSS", light: "#4FE3B0", text: "text-light-aurora", icon: "rss", defaultRefresh: 300 },
 };
 
 export function serviceMeta(name) {
   return (
     SERVICE_META[name] ?? {
       label: name,
-      band: "bg-tile-other",
-      text: "text-tile-other",
+      light: "#A3ACCF",
+      text: "text-haze",
+      icon: "grid",
       defaultRefresh: 60,
     }
   );
+}
+
+/** "Toutes les 10 min", "Toutes les 30 s", "Toutes les heures" */
+export function formatInterval(seconds) {
+  const s = Number(seconds);
+  if (s >= 3600) return s === 3600 ? "Toutes les heures" : `Toutes les ${Math.round(s / 3600)} h`;
+  if (s >= 60) return s === 60 ? "Toutes les minutes" : `Toutes les ${Math.round(s / 60)} min`;
+  return `Toutes les ${s} s`;
 }
 
 function hostOf(link) {
@@ -29,13 +38,14 @@ function hostOf(link) {
   }
 }
 
-// size = taille par défaut dans la grille (12 colonnes, lignes de 80px)
+// size = taille par défaut dans la grille (12 colonnes, lignes de 80px).
+// Attention : h=2 ne laisse que ~72px de contenu, h=3 ~168px, h=4 ~264px.
 // params = surcharges des bornes d'un paramètre pour CE widget
 export const WIDGET_META = {
   "weather:city_temperature": {
     title: "Température",
     description: "Température actuelle d'une ville.",
-    size: { w: 3, h: 2 },
+    size: { w: 3, h: 3 },
     summary: (c) => c.city,
   },
   "weather:forecast": {
@@ -48,13 +58,13 @@ export const WIDGET_META = {
   "crypto:price": {
     title: "Prix",
     description: "Prix actuel d'une cryptomonnaie.",
-    size: { w: 3, h: 2 },
+    size: { w: 3, h: 3 },
     summary: (c) => `${c.coin} en ${String(c.currency).toUpperCase()}`,
   },
   "crypto:price_history": {
     title: "Historique des prix",
     description: "Courbe du prix d'une cryptomonnaie sur plusieurs jours.",
-    size: { w: 4, h: 3 },
+    size: { w: 4, h: 4 },
     summary: (c) => `${c.coin}, ${c.days} jours`,
     params: { days: { min: 1, max: 365, initial: 7 } },
   },
@@ -79,7 +89,7 @@ export const WIDGET_META = {
   "rss:feed_preview": {
     title: "Aperçu du flux",
     description: "Le dernier article d'un flux RSS, avec son résumé.",
-    size: { w: 4, h: 3 },
+    size: { w: 4, h: 4 },
     summary: (c) => hostOf(c.link),
   },
 };

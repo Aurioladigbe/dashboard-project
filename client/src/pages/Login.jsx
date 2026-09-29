@@ -33,7 +33,7 @@ export default function Login() {
       footer={
         <>
           Pas encore de compte ?{" "}
-          <Link to="/register" className="font-medium text-white underline underline-offset-2">
+          <Link to="/register" className="font-medium text-frost underline decoration-white/30 underline-offset-4 hover:decoration-white">
             S'inscrire
           </Link>
         </>
@@ -60,12 +60,12 @@ export default function Login() {
         />
 
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="rounded-lg border border-alert/25 bg-alert/[0.08] px-3 py-2 text-sm text-alert">
             {error}
           </p>
         )}
 
-        <Button type="submit" disabled={busy} className="w-full py-2.5">
+        <Button type="submit" disabled={busy} className="w-full py-3">
           Se connecter
         </Button>
       </form>

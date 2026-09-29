@@ -52,13 +52,24 @@ export function formatMoney(value, currency) {
   if (!Number.isFinite(amount)) return "–";
   const digits = Math.abs(amount) < 1 ? 4 : 2;
   try {
+    // narrowSymbol : "$" plutôt que "$US". L'espace fine insécable du français
+    // (U+202F) n'existe pas dans toutes les polices : on la remplace par une
+    // espace insécable classique, sinon "64 250" s'affiche "64250".
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
       currency: String(currency).toUpperCase(),
+      currencyDisplay: "narrowSymbol",
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
-    }).format(amount);
+    })
+      .format(amount)
+      .replace(/\u202f/g, "\u00a0");
   } catch {
     return `${amount.toLocaleString("fr-FR")} ${String(currency).toUpperCase()}`;
   }
+}
+
+/** 2.5 -> "2,50" (virgule française), pour les pourcentages. */
+export function formatPercent(value, digits = 2) {
+  return new Intl.NumberFormat("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 }

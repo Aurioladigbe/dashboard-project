@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Button from "../ui/Button";
 import Icon from "../ui/Icon";
 import Modal from "../ui/Modal";
+import ServiceGlyph from "../ui/ServiceGlyph";
 import {
   REFRESH_OPTIONS,
   fieldFor,
@@ -12,7 +13,26 @@ import {
 } from "../../lib/catalog";
 
 const INPUT =
-  "w-full rounded border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-mist/70 aria-[invalid=true]:border-danger";
+  "w-full rounded-[10px] border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-frost placeholder:text-haze transition-colors hover:border-white/20 focus:border-iris/60 aria-[invalid=true]:border-alert/70";
+
+// Recherche insensible à la casse et aux accents ("meteo" trouve "Météo").
+function normalize(text) {
+  return String(text ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function Select({ className = "", children, ...props }) {
+  return (
+    <div className="relative">
+      <select className={`${INPUT} appearance-none pr-9 ${className}`} {...props}>
+        {children}
+      </select>
+      <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-haze" />
+    </div>
+  );
+}
 
 function initialValues(fields, config) {
   const values = {};
@@ -78,17 +98,17 @@ function Field({ field, value, error, onChange, autoFocus }) {
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
         {field.label}
       </label>
       {field.options ? (
-        <select {...common}>
+        <Select {...common} className="">
           {field.options.map(([optionValue, optionLabel]) => (
             <option key={optionValue} value={optionValue}>
               {optionLabel}
             </option>
           ))}
-        </select>
+        </Select>
       ) : (
         <input
           {...common}
@@ -100,12 +120,12 @@ function Field({ field, value, error, onChange, autoFocus }) {
         />
       )}
       {field.hint && (
-        <p id={hintId} className="mt-1 text-xs text-mist">
+        <p id={hintId} className="mt-1.5 text-xs text-haze">
           {field.hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="mt-1 text-sm text-danger">
+        <p id={errorId} className="mt-1.5 text-sm text-alert">
           {error}
         </p>
       )}
@@ -132,6 +152,7 @@ export default function WidgetFormModal({ catalog, subscribed, widget = null, on
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
 
   const { widgetDef, fields } = resolve(catalog, choice);
 
@@ -182,37 +203,73 @@ export default function WidgetFormModal({ catalog, subscribed, widget = null, on
 
   /* ───── Étape 1 : choisir un type de widget ───── */
   if (!choice) {
+    const q = normalize(query.trim());
+    const matches = (service, def) =>
+      !q ||
+      [serviceMeta(service.name).label, widgetMeta(service.name, def.name).title, widgetDescription(service.name, def)]
+        .map(normalize)
+        .some((text) => text.includes(q));
+    const groups = catalog
+      .map((service) => ({ service, widgets: service.widgets.filter((def) => matches(service, def)) }))
+      .filter((group) => group.widgets.length > 0);
+
     return (
       <Modal title={title} onClose={onClose} wide>
-        <div className="space-y-6">
-          {catalog.map((service) => {
+        <div className="relative">
+          <label htmlFor="widget-search" className="sr-only">
+            Rechercher un widget
+          </label>
+          <Icon name="search" size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-haze" />
+          <input
+            id="widget-search"
+            type="search"
+            autoFocus
+            autoComplete="off"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Rechercher un widget"
+            className={`${INPUT} py-3 pl-10`}
+          />
+        </div>
+
+        <div className="mt-5 space-y-6">
+          {groups.length === 0 && (
+            <p role="status" className="py-8 text-center text-sm text-haze">
+              Aucun widget ne correspond à « {query.trim()} ».
+            </p>
+          )}
+
+          {groups.map(({ service, widgets }) => {
             const meta = serviceMeta(service.name);
             const available = !service.requiresAuth || subscribed.has(service.name);
             return (
               <section key={service.name} aria-label={meta.label}>
-                <h3 className="flex items-center gap-2 font-semibold">
-                  <span className={`h-3 w-3 rounded-sm ${meta.band}`} aria-hidden="true" />
-                  {meta.label}
-                </h3>
-                {!available && (
-                  <p className="mt-1 text-sm text-mist">
-                    Ce service demande un abonnement.{" "}
-                    <Link to="/services" className="text-white underline underline-offset-2">
-                      Gérer mes services
-                    </Link>
-                  </p>
-                )}
-                <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {service.widgets.map((def) => (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    <ServiceGlyph service={service.name} size="sm" />
+                    {meta.label}
+                  </h3>
+                  {!available && (
+                    <p className="flex items-center gap-1.5 text-xs text-haze">
+                      <Icon name="lock" size={13} />
+                      Demande un abonnement.{" "}
+                      <Link to="/services" className="text-iris underline decoration-iris/40 underline-offset-4 hover:decoration-iris">
+                        Gérer mes services
+                      </Link>
+                    </p>
+                  )}
+                </div>
+                <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
+                  {widgets.map((def) => (
                     <li key={def.name}>
                       <button
                         type="button"
                         disabled={!available}
                         onClick={() => pick(service, def)}
-                        className="h-full w-full rounded border border-ink-600 p-3 text-left hover:border-white hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-ink-600 disabled:hover:bg-transparent"
+                        className="group flex h-full w-full flex-col items-start justify-start rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5 text-left transition duration-200 hover:border-white/[0.18] hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-white/[0.07] disabled:hover:bg-white/[0.025]"
                       >
-                        <span className="block font-medium">{widgetMeta(service.name, def.name).title}</span>
-                        <span className="block text-sm text-mist">{widgetDescription(service.name, def)}</span>
+                        <span className="block text-sm font-medium">{widgetMeta(service.name, def.name).title}</span>
+                        <span className="mt-0.5 block text-sm text-haze">{widgetDescription(service.name, def)}</span>
                       </button>
                     </li>
                   ))}
@@ -229,8 +286,8 @@ export default function WidgetFormModal({ catalog, subscribed, widget = null, on
   if (!widgetDef) {
     return (
       <Modal title={title} onClose={onClose}>
-        <p className="text-sm text-danger">Ce type de widget n'existe plus dans le catalogue du serveur.</p>
-        <div className="mt-4 flex justify-end">
+        <p className="text-sm text-alert">Ce type de widget n'existe plus dans le catalogue du serveur.</p>
+        <div className="mt-5 flex justify-end">
           <Button variant="secondary" onClick={onClose}>
             Fermer
           </Button>
@@ -242,23 +299,23 @@ export default function WidgetFormModal({ catalog, subscribed, widget = null, on
   const meta = serviceMeta(choice.service);
   return (
     <Modal title={title} onClose={onClose}>
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {!editing && (
           <button
             type="button"
             onClick={() => setChoice(null)}
-            className="inline-flex items-center gap-1 rounded text-sm text-mist hover:text-white"
+            className="-mt-1 inline-flex items-center gap-1 rounded text-sm text-haze transition-colors hover:text-frost"
           >
             <Icon name="back" size={16} />
             Changer de widget
           </button>
         )}
 
-        <div className="flex items-center gap-3">
-          <span className={`h-8 w-8 shrink-0 rounded ${meta.band}`} aria-hidden="true" />
-          <div>
+        <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
+          <ServiceGlyph service={choice.service} size="lg" />
+          <div className="min-w-0">
             <p className="font-semibold">{widgetMeta(choice.service, choice.type).title}</p>
-            <p className="text-sm text-mist">{meta.label}</p>
+            <p className="text-sm text-haze">{meta.label}</p>
           </div>
         </div>
 
@@ -274,14 +331,13 @@ export default function WidgetFormModal({ catalog, subscribed, widget = null, on
         ))}
 
         <div>
-          <label htmlFor="widget-refresh" className="mb-1 block text-sm font-medium">
+          <label htmlFor="widget-refresh" className="mb-1.5 block text-sm font-medium">
             Actualisation
           </label>
-          <select
+          <Select
             id="widget-refresh"
             value={refreshRate}
             onChange={(event) => setRefreshRate(event.target.value)}
-            className={INPUT}
             aria-describedby={choice.service === "github" ? "widget-refresh-hint" : undefined}
           >
             {refreshOptions.map(([seconds, label]) => (
@@ -289,22 +345,22 @@ export default function WidgetFormModal({ catalog, subscribed, widget = null, on
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
           {choice.service === "github" && (
-            <p id="widget-refresh-hint" className="mt-1 text-xs text-mist">
+            <p id="widget-refresh-hint" className="mt-1.5 text-xs text-haze">
               L'API GitHub limite le nombre de requêtes : gardez 5 minutes ou plus.
             </p>
           )}
         </div>
 
         {submitError && (
-          <p role="alert" className="flex items-start gap-2 text-sm text-danger">
-            <Icon name="alert" className="mt-0.5 shrink-0" />
+          <p role="alert" className="flex items-start gap-2 rounded-lg border border-alert/25 bg-alert/[0.08] p-3 text-sm text-alert">
+            <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
             <span>{submitError}</span>
           </p>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 pt-1">
           <Button variant="secondary" onClick={onClose}>
             Annuler
           </Button>

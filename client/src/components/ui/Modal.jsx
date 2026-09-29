@@ -65,9 +65,9 @@ export default function Modal({ title, onClose, children, wide = false }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-ink-950/85 p-0 sm:items-center sm:p-6"
+      className="animate-fade-in fixed inset-0 z-40 flex items-end justify-center bg-night/70 p-0 backdrop-blur-[6px] sm:items-center sm:p-6"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) closeRef.current();
       }}
     >
       <div
@@ -76,24 +76,24 @@ export default function Modal({ title, onClose, children, wide = false }) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-lg border border-ink-600 bg-ink-800 shadow-2xl sm:rounded-lg ${
+        className={`glass-strong animate-dialog-in flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[22px] sm:rounded-[22px] ${
           wide ? "sm:max-w-2xl" : "sm:max-w-md"
         }`}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-ink-700 px-5 py-4">
-          <h2 id={titleId} className="font-display text-2xl tracking-wide">
+        <div className="flex items-center justify-between gap-4 px-6 pb-2 pt-5">
+          <h2 id={titleId} className="type-display text-xl">
             {title}
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => closeRef.current()}
             aria-label="Fermer"
-            className="rounded p-1.5 text-mist hover:bg-ink-700 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-haze transition-colors hover:bg-white/[0.08] hover:text-frost"
           >
-            <Icon name="x" />
+            <Icon name="x" size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto px-5 py-5">{children}</div>
+        <div className="overflow-y-auto px-6 pb-6 pt-3">{children}</div>
       </div>
     </div>,
     document.body
