@@ -105,7 +105,7 @@ describe("Dashboard", () => {
       x: 0,
       y: 0,
       w: 3,
-      h: 2,
+      h: 3,
     });
 
     // la boîte se ferme et le nouveau widget apparaît
@@ -159,6 +159,24 @@ describe("Dashboard", () => {
     const card = await screen.findByRole("article", { name: "Température" });
     expect(await within(card).findByText(/Ville introuvable/)).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Réessayer" })).toBeInTheDocument();
+  });
+
+  it("ouvre « Ajouter un widget » avec Ctrl K / ⌘K", async () => {
+    mockApi();
+    renderDashboard();
+    await screen.findByRole("article", { name: "Température" });
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(await screen.findByRole("dialog", { name: "Ajouter un widget" })).toBeInTheDocument();
+  });
+
+  it("confirme visiblement la suppression", async () => {
+    mockApi();
+    api.delete.mockResolvedValue({});
+    renderDashboard();
+    fireEvent.click(await screen.findByRole("button", { name: "Supprimer le widget Température" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Supprimer" }));
+    expect(await screen.findByText("Widget supprimé")).toBeInTheDocument();
   });
 
   it("propose de réessayer quand le chargement échoue", async () => {

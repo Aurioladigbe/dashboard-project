@@ -39,14 +39,14 @@ export default function Register() {
         footer={
           <>
             Déjà confirmé ?{" "}
-            <Link to="/login" className="font-medium text-white underline underline-offset-2">
+            <Link to="/login" className="font-medium text-frost underline decoration-white/30 underline-offset-4 hover:decoration-white">
               Se connecter
             </Link>
           </>
         }
       >
-        <div role="status" className="flex items-start gap-3 rounded border border-ink-600 bg-ink-800 p-4">
-          <Icon name="check" className="mt-0.5 shrink-0 text-tile-rss" />
+        <div role="status" className="flex items-start gap-3 rounded-xl border border-light-aurora/25 bg-light-aurora/[0.07] p-4">
+          <Icon name="check" className="mt-0.5 shrink-0 text-light-aurora" />
           <p className="text-sm">
             Un email de confirmation a été envoyé à <strong>{email}</strong>. Ouvrez-le et cliquez sur le lien pour
             activer votre compte.
@@ -62,7 +62,7 @@ export default function Register() {
       footer={
         <>
           Déjà inscrit ?{" "}
-          <Link to="/login" className="font-medium text-white underline underline-offset-2">
+          <Link to="/login" className="font-medium text-frost underline decoration-white/30 underline-offset-4 hover:decoration-white">
             Se connecter
           </Link>
         </>
@@ -98,12 +98,12 @@ export default function Register() {
         />
 
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="rounded-lg border border-alert/25 bg-alert/[0.08] px-3 py-2 text-sm text-alert">
             {error}
           </p>
         )}
 
-        <Button type="submit" disabled={busy} className="w-full py-2.5">
+        <Button type="submit" disabled={busy} className="w-full py-3">
           S'inscrire
         </Button>
       </form>

@@ -2,21 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @layer base {
   html {
     color-scheme: dark;
   }
 
   body {
-    @apply bg-ink-900 font-body text-white antialiased;
+    @apply bg-night font-sans text-frost antialiased;
   }
 
-  /* Anneau de focus double (sombre + blanc) : visible sur fond sombre comme
-     sur les bandes de couleur des widgets. */
+  /* Un seul éclairage d'ambiance, venu d'en haut, et un grain léger contre les
+     aplats. Tous deux derrière le contenu : ils ne touchent pas au contraste. */
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+  body::before {
+    z-index: -2;
+    background:
+      radial-gradient(70% 50% at 50% -12%, rgb(64 86 255 / 0.26), transparent 70%),
+      radial-gradient(45% 40% at 105% 110%, rgb(64 86 255 / 0.1), transparent 70%);
+  }
+  body::after {
+    z-index: -1;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
   :focus-visible {
-    outline: 2px solid #060b3d;
-    outline-offset: 0;
-    box-shadow: 0 0 0 4px #ffffff;
+    outline: 2px solid theme("colors.iris");
+    outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -32,17 +54,207 @@
 
 @layer components {
   .skip-link {
-    @apply absolute left-3 top-3 z-50 -translate-y-20 rounded bg-white px-3 py-2 text-sm font-semibold text-ink-950 focus:translate-y-0;
+    @apply absolute left-3 top-3 z-50 -translate-y-20 rounded-lg bg-frost px-3 py-2 text-sm font-semibold text-night focus:translate-y-0;
+  }
+
+  /* Titres et chiffres : Mona Sans en largeur étendue. La typographie est l'élément
+     visuel ; pas de seconde famille. */
+  .type-display {
+    font-stretch: 125%;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+  .type-numeral {
+    font-stretch: 125%;
+    font-weight: 300;
+    letter-spacing: -0.045em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Vitre fumée : assez opaque pour que le texte reste lisible quand la lumière
+     derrière pulse (contraste calculé ≥ 4,7:1 au pic de la pulsation), assez claire pour la laisser teinter. */
+  .glass {
+    background: rgb(11 15 38 / 0.76);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.06),
+      0 30px 60px -30px rgb(0 0 0 / 0.75);
+  }
+  .glass-strong {
+    background: rgb(11 15 38 / 0.9);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.1);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      0 40px 80px -30px rgb(0 0 0 / 0.85);
+  }
+  .glass-chrome {
+    background: rgb(7 10 28 / 0.62);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    backdrop-filter: blur(20px) saturate(140%);
+  }
+
+  /* ─── Panneau : une vitre éclairée par derrière par la lumière de son service ───
+     La lumière porte l'information : elle identifie le service, baisse pendant le
+     chargement, vire au rouge en cas d'erreur et pulse une fois à chaque donnée reçue. */
+  .pane {
+    position: relative;
+    isolation: isolate;
+    --glow: 0.5;
+    animation: pane-rise 0.75s var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+    transition: transform 0.3s var(--ease-out);
+  }
+  .pane[data-state="loading"] {
+    --glow: 0.14;
+  }
+  .pane[data-state="error"] {
+    --light: #ff8a94 !important;
+    --glow: 0.4;
+  }
+
+  .pane-light {
+    position: absolute;
+    inset: -26% -16%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, var(--light) 30%, transparent);
+    filter: blur(36px);
+    opacity: var(--glow);
+    transition: opacity 0.9s var(--ease-out);
+    pointer-events: none;
+  }
+  .pane[data-pulse="true"] .pane-light {
+    animation: light-pulse 1.4s var(--ease-out);
+  }
+
+  .pane-glass {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+  /* Arête supérieure : un filet de la couleur du service… */
+  .pane-glass::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 14%;
+    right: 14%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--light), transparent);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+  /* …qui devient une barre de progression pendant le chargement */
+  .pane[data-state="loading"] .pane-glass::before {
+    left: 0;
+    right: 0;
+    background: linear-gradient(90deg, transparent, var(--light), transparent) no-repeat;
+    background-size: 35% 100%;
+    animation: scan 1.1s linear infinite;
+  }
+
+  /* Le contenu s'adapte à la largeur de SON panneau, pas à celle de l'écran */
+  .widget-body {
+    container-type: inline-size;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+  }
+  .widget-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  .widget-body::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.18);
+    border-radius: 4px;
+  }
+  .num-xl {
+    font-size: clamp(3rem, 30cqi, 6.5rem);
+    line-height: 0.9;
+  }
+  .num-lg {
+    font-size: clamp(1.75rem, 12cqi, 3.25rem);
+    line-height: 1;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.25s var(--ease-out) both;
+  }
+  .animate-dialog-in {
+    animation: dialog-in 0.32s var(--ease-out) both;
+  }
+  .animate-toast-in {
+    animation: toast-in 0.4s var(--ease-out) both;
   }
 }
 
-/* Poignée de redimensionnement de la grille, aux couleurs de la charte */
-.react-grid-item > .react-resizable-handle::after {
-  border-color: #060b3d !important;
-  opacity: 0.7;
+/* ─── Grille : ce qui se passe pendant qu'on déplace un panneau ─── */
+.react-grid-item.react-draggable-dragging .pane,
+.react-grid-item.resizing .pane {
+  transform: scale(1.015);
+  --glow: 0.7;
+}
+.react-grid-item.react-draggable-dragging .pane-glass,
+.react-grid-item.resizing .pane-glass {
+  border-color: rgb(255 255 255 / 0.2);
 }
 .react-grid-item.react-grid-placeholder {
-  background: #00ff9c !important;
-  opacity: 0.18 !important;
-  border-radius: 6px;
+  background: rgb(255 255 255 / 0.03) !important;
+  border: 1px dashed rgb(238 241 255 / 0.3);
+  border-radius: 18px;
+  opacity: 1 !important;
+}
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.react-grid-item:hover > .react-resizable-handle,
+.react-grid-item:focus-within > .react-resizable-handle {
+  opacity: 1;
+}
+.react-grid-item > .react-resizable-handle::after {
+  border-color: rgb(238 241 255 / 0.55) !important;
+}
+
+@keyframes pane-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    filter: blur(6px);
+  }
+}
+@keyframes light-pulse {
+  30% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+@keyframes scan {
+  from {
+    background-position: -35% 0;
+  }
+  to {
+    background-position: 135% 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.975);
+    filter: blur(4px);
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
 }

@@ -1,7 +1,6 @@
 import { useId } from "react";
 
-// Champ de saisie avec une étiquette réservée aux lecteurs d'écran (sr-only) :
-// le placeholder reste le libellé visible, l'étiquette assure l'accessibilité.
+// Étiquette réservée aux lecteurs d'écran : le placeholder sert de libellé visible.
 export default function TextInput({ label, id, className = "", ...props }) {
   const autoId = useId();
   const inputId = id ?? autoId;
@@ -12,7 +11,7 @@ export default function TextInput({ label, id, className = "", ...props }) {
       </label>
       <input
         id={inputId}
-        className={`w-full rounded border border-ink-600 bg-ink-900 px-3 py-2.5 text-white placeholder:text-mist/70 ${className}`}
+        className={`w-full rounded-[10px] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-frost placeholder:text-haze transition-colors hover:border-white/20 focus:border-iris/60 ${className}`}
         {...props}
       />
     </div>

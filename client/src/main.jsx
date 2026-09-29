@@ -1,9 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "@fontsource/anton/400.css";
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-sans/600.css";
+// Mona Sans avec son axe de largeur (75 % → 125 %) : titres et chiffres en largeur étendue
+import "@fontsource-variable/mona-sans/wdth.css";
 import App from "./App.jsx";
 import "./index.css";
 

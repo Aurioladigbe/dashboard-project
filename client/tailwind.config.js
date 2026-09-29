@@ -4,28 +4,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Fonds : bleu nuit de la charte Epitech, du plus sombre au plus clair
-        ink: {
-          950: "#060B3D",
-          900: "#0A1257",
-          800: "#0F1B78",
-          700: "#1B2B9C",
-          600: "#2F41C4",
-        },
-        mist: "#BFC8FF", // texte secondaire
-        danger: "#FF8A75",
-        // Une couleur pleine par service : c'est elle qui identifie un widget
-        tile: {
-          weather: "#8FB0FF",
-          crypto: "#FF5F3C",
-          github: "#FF4DF0",
-          rss: "#00FF9C",
-          other: "#BFC8FF",
+        night: "#070A1C", // fond : indigo très sombre, héritage du bleu Epitech
+        smoke: "#0B0F26", // teinte de la vitre fumée
+        frost: "#EEF1FF", // texte principal
+        haze: "#A3ACCF", // texte secondaire (≥ 5,4:1 même vitre éclairée)
+        iris: "#8FA2FF", // liens, focus
+        alert: "#FF8A94", // erreurs
+        // La lumière de chaque service, derrière sa vitre
+        light: {
+          sky: "#6CB8FF",
+          ember: "#FFA657",
+          orchid: "#C58CFF",
+          aurora: "#4FE3B0",
         },
       },
       fontFamily: {
-        display: ["Anton", "Impact", '"Arial Narrow"', "sans-serif"],
-        body: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
+        sans: ['"Mona Sans Variable"', "system-ui", "-apple-system", '"Segoe UI"', "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
     },
   },

@@ -114,6 +114,19 @@ describe("WidgetFormModal — ajout", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("filtre les widgets par recherche, sans tenir compte des accents", () => {
+    renderModal();
+    const search = screen.getByLabelText("Rechercher un widget");
+    expect(search).toHaveFocus();
+
+    fireEvent.change(search, { target: { value: "previsions" } });
+    expect(screen.getByRole("button", { name: /^Prévisions/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Température/ })).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "zzz" } });
+    expect(screen.getByText(/Aucun widget ne correspond/)).toBeInTheDocument();
+  });
+
   it("permet de revenir au choix du widget", () => {
     renderModal();
     fireEvent.click(screen.getByRole("button", { name: /^Température/ }));
