@@ -15,7 +15,7 @@ enum Role {
 model User {
   id            Int                   @id @default(autoincrement())
   email         String                @unique
-  username      String
+  username      String                @unique
   password      String? // null si inscription via OAuth uniquement
   role          Role                  @default(USER)
   confirmed     Boolean               @default(false)
