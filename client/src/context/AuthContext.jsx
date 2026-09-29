@@ -26,10 +26,19 @@ export function AuthProvider({ children }) {
     setUser(res.data.user);
   }
 
+  // Le serveur renvoie un token même si le compte n'est pas encore confirmé
+  // (selon l'état de la confirmation email côté backend) : on ne connecte
+  // l'utilisateur QUE si son compte est déjà confirmé. Sinon on garde le
+  // token de côté sans l'utiliser : register() renvoie { confirmed } pour
+  // que la page Register affiche l'écran adapté, sans deviner la logique ici.
   async function register(email, username, password) {
     const res = await api.post("/auth/register", { email, username, password });
-    localStorage.setItem("token", res.data.token);
-    setUser(res.data.user);
+    const confirmed = res.data.user.confirmed !== false;
+    if (confirmed) {
+      localStorage.setItem("token", res.data.token);
+      setUser(res.data.user);
+    }
+    return { confirmed };
   }
 
   function logout() {
