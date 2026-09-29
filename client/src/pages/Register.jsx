@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../components/ui/Button";
+import Icon from "../components/ui/Icon";
 import TextInput from "../components/ui/TextInput";
 
 export default function Register() {
@@ -13,19 +14,46 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      await register(email, username, password);
-      navigate("/dashboard");
+      const { confirmed } = await register(email, username, password);
+      if (confirmed) navigate("/dashboard");
+      else setAwaitingConfirmation(true);
     } catch (err) {
       setError(err.response?.data?.error || "Inscription impossible");
     } finally {
       setBusy(false);
     }
+  }
+
+  // Compte créé, mais confirmation email requise avant de se connecter.
+  if (awaitingConfirmation) {
+    return (
+      <AuthLayout
+        title="Vérifiez vos emails"
+        footer={
+          <>
+            Déjà confirmé ?{" "}
+            <Link to="/login" className="font-medium text-white underline underline-offset-2">
+              Se connecter
+            </Link>
+          </>
+        }
+      >
+        <div role="status" className="flex items-start gap-3 rounded border border-ink-600 bg-ink-800 p-4">
+          <Icon name="check" className="mt-0.5 shrink-0 text-tile-rss" />
+          <p className="text-sm">
+            Un email de confirmation a été envoyé à <strong>{email}</strong>. Ouvrez-le et cliquez sur le lien pour
+            activer votre compte.
+          </p>
+        </div>
+      </AuthLayout>
+    );
   }
 
   return (
