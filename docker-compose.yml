@@ -25,6 +25,8 @@ services:
       DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
       JWT_SECRET: change-me-in-env
       PORT: 8080
+    volumes:
+      - ./server/prisma:/app/prisma
     depends_on:
       db:
         condition: service_healthy
