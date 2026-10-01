@@ -4,9 +4,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { prisma } from "../config/db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createRateLimiter } from "../middleware/rateLimiter.js";
+import { validateWidgetConfig, validateWidgetLayout } from "../utils/validators.js";
 import { getCurrentTemperature, getForecast } from "../services/weatherService.js";
 import { getRecentCommits, getRepoList } from "../services/githubService.js";
 import { getArticleList, getFeedPreview } from "../services/rssService.js";
+import { getCryptoPrice, getCryptoHistory } from "../services/cryptoService.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const servicesPath = path.join(__dirname, "..", "config", "services.json");
@@ -28,11 +31,11 @@ const WIDGET_SELECT = {
 };
 
 // Registre extensible des sources de donnees par "service:type".
-// Pour ajouter un futur service (crypto, github, rss), il suffit d'ajouter
-// ses cles "service:type" ici sans toucher a la route GET /:id/data.
 const WIDGET_DATA_HANDLERS = {
   "weather:city_temperature": (config) => getCurrentTemperature(config.city),
   "weather:forecast": (config) => getForecast(config.city, config.days),
+  "crypto:price": (config) => getCryptoPrice(config.coin, config.currency),
+  "crypto:price_history": (config) => getCryptoHistory(config.coin, config.days),
   "github:recent_commits": (config, widget, context) =>
     getRecentCommits(config.repo, config.count, context?.token),
   "github:repo_list": (config, widget, context) =>
@@ -41,20 +44,18 @@ const WIDGET_DATA_HANDLERS = {
   "rss:feed_preview": (config) => getFeedPreview(config.link),
 };
 
-function validateWidgetParams(widgetDef, config) {
-  if (!config || typeof config !== "object" || Array.isArray(config)) {
-    return "Le champ config doit être un objet JSON valide";
-  }
+// Limiteur de débit pour éviter l'épuisement des quotas d'API externes
+const widgetDataLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: "Trop de requêtes de données pour vos widgets. Veuillez patienter.",
+});
 
-  for (const param of widgetDef.params || []) {
-    const value = config[param.name];
-    if (value === undefined || value === null || value === "") {
-      return `Paramètre requis manquant dans config : "${param.name}"`;
-    }
-  }
-
-  return null;
-}
+const widgetMutationLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: "Trop de créations de widgets. Veuillez patienter.",
+});
 
 const router = Router();
 router.use(requireAuth);
@@ -70,9 +71,9 @@ router.get("/", async (req, res) => {
 });
 
 // GET /api/widgets/:id/data — recupere les donnees live d'un widget
-router.get("/:id/data", async (req, res) => {
+router.get("/:id/data", widgetDataLimiter, async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id)) {
+  if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Identifiant de widget invalide" });
   }
 
@@ -121,11 +122,16 @@ router.get("/:id/data", async (req, res) => {
 
 // POST /api/widgets — ajoute une instance de widget
 // body: { service, type, config, refreshRate, x, y, w, h }
-router.post("/", async (req, res) => {
+router.post("/", widgetMutationLimiter, async (req, res) => {
   const { service, type, config, refreshRate, x, y, w, h } = req.body || {};
 
   if (!service || !type || config === undefined) {
     return res.status(400).json({ error: "service, type et config sont requis" });
+  }
+
+  const layoutError = validateWidgetLayout({ refreshRate, x, y, w, h });
+  if (layoutError) {
+    return res.status(400).json({ error: layoutError });
   }
 
   const catalog = loadServicesCatalog();
@@ -141,7 +147,7 @@ router.post("/", async (req, res) => {
     });
   }
 
-  const paramError = validateWidgetParams(widgetDef, config);
+  const paramError = validateWidgetConfig(service, type, widgetDef, config);
   if (paramError) {
     return res.status(400).json({ error: paramError });
   }
@@ -152,11 +158,11 @@ router.post("/", async (req, res) => {
       service,
       type,
       config,
-      refreshRate: refreshRate ?? 60,
-      x: x ?? 0,
-      y: y ?? 0,
-      w: w ?? 3,
-      h: h ?? 2,
+      refreshRate: refreshRate !== undefined ? Number(refreshRate) : 60,
+      x: x !== undefined ? Number(x) : 0,
+      y: y !== undefined ? Number(y) : 0,
+      w: w !== undefined ? Number(w) : 3,
+      h: h !== undefined ? Number(h) : 2,
     },
     select: WIDGET_SELECT,
   });
@@ -167,8 +173,16 @@ router.post("/", async (req, res) => {
 // PATCH /api/widgets/:id — reconfigure / deplace un widget existant
 router.patch("/:id", async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id)) {
+  if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Identifiant de widget invalide" });
+  }
+
+  const { config, refreshRate, x, y, w, h } = req.body || {};
+
+  // Valider les dimensions et positions immédiatement (Fail fast)
+  const layoutError = validateWidgetLayout({ refreshRate, x, y, w, h });
+  if (layoutError) {
+    return res.status(400).json({ error: layoutError });
   }
 
   const existing = await prisma.widgetInstance.findFirst({
@@ -178,14 +192,12 @@ router.patch("/:id", async (req, res) => {
     return res.status(404).json({ error: "Widget introuvable" });
   }
 
-  const { config, refreshRate, x, y, w, h } = req.body || {};
-
   if (config !== undefined) {
     const catalog = loadServicesCatalog();
     const serviceDef = catalog.find((s) => s.name === existing.service);
     const widgetDef = serviceDef?.widgets.find((wDef) => wDef.name === existing.type);
     if (widgetDef) {
-      const paramError = validateWidgetParams(widgetDef, config);
+      const paramError = validateWidgetConfig(existing.service, existing.type, widgetDef, config);
       if (paramError) {
         return res.status(400).json({ error: paramError });
       }
@@ -194,11 +206,11 @@ router.patch("/:id", async (req, res) => {
 
   const data = {};
   if (config !== undefined) data.config = config;
-  if (refreshRate !== undefined) data.refreshRate = refreshRate;
-  if (x !== undefined) data.x = x;
-  if (y !== undefined) data.y = y;
-  if (w !== undefined) data.w = w;
-  if (h !== undefined) data.h = h;
+  if (refreshRate !== undefined) data.refreshRate = Number(refreshRate);
+  if (x !== undefined) data.x = Number(x);
+  if (y !== undefined) data.y = Number(y);
+  if (w !== undefined) data.w = Number(w);
+  if (h !== undefined) data.h = Number(h);
 
   const widget = await prisma.widgetInstance.update({
     where: { id },

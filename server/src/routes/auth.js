@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../config/db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createRateLimiter } from "../middleware/rateLimiter.js";
+import { validateRegisterInput, validateLoginInput } from "../utils/validators.js";
 import { sendConfirmationEmail } from "../services/emailService.js";
 
 const router = Router();
@@ -21,48 +22,11 @@ const loginLimiter = createRateLimiter({
   message: "Trop de tentatives de connexion infructueuses. Veuillez patienter 15 minutes.",
 });
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/;
-
-function validateRegisterInput(body) {
-  const { email, username, password } = body || {};
-
-  if (!email || !username || !password) {
-    return "email, username et password sont requis";
-  }
-
-  if (typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
-    return "Format d'email invalide";
-  }
-
-  if (typeof username !== "string" || !USERNAME_REGEX.test(username.trim())) {
-    return "Le nom d'utilisateur doit contenir entre 3 et 20 caractères (lettres, chiffres, - ou _)";
-  }
-
-  if (typeof password !== "string" || password.length < 8) {
-    return "Le mot de passe doit contenir au moins 8 caractères";
-  }
-
-  return null;
-}
-
-function validateLoginInput(body) {
-  const { email, password } = body || {};
-
-  if (!email || !password) {
-    return "email et password sont requis";
-  }
-
-  if (typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
-    return "Format d'email invalide";
-  }
-
-  if (typeof password !== "string") {
-    return "Format de mot de passe invalide";
-  }
-
-  return null;
-}
+const confirmLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "Trop de tentatives de confirmation d'email. Veuillez patienter 15 minutes.",
+});
 
 function signToken(user) {
   return jwt.sign(
@@ -120,7 +84,7 @@ router.post("/register", authLimiter, async (req, res) => {
 });
 
 // GET /api/auth/confirm/:token
-router.get("/confirm/:token", async (req, res) => {
+router.get("/confirm/:token", confirmLimiter, async (req, res) => {
   const { token } = req.params;
 
   let payload;

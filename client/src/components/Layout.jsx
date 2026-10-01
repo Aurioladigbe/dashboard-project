@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import Icon from "./ui/Icon";
 import Logo from "./ui/Logo";
 
-const NAV = [
+const BASE_NAV = [
   { to: "/dashboard", icon: "grid", label: "Mon dashboard" },
   { to: "/services", icon: "layers", label: "Services" },
 ];
@@ -26,6 +26,11 @@ function navClass({ isActive }) {
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const initial = String(user?.username ?? "?").charAt(0).toUpperCase();
+  const isAdmin = user?.role === "ADMIN";
+
+  const navItems = isAdmin
+    ? [...BASE_NAV, { to: "/admin", icon: "shield", label: "Administration" }]
+    : BASE_NAV;
 
   return (
     <div className="min-h-screen lg:pl-64">
@@ -40,7 +45,7 @@ export default function Layout({ children }) {
         </div>
 
         <nav aria-label="Navigation principale" className="mt-10 space-y-1">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink key={item.to} to={item.to} className={navClass}>
               <Icon name={item.icon} size={17} />
               {item.label}
@@ -55,7 +60,21 @@ export default function Layout({ children }) {
           >
             {initial}
           </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{user?.username}</span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-frost" title={user?.username}>
+              {user?.username}
+            </p>
+            {isAdmin ? (
+              <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-light-orchid">
+                <Icon name="shield" size={11} />
+                Admin
+              </span>
+            ) : (
+              <span className="mt-0.5 block text-[11px] text-haze">
+                Utilisateur
+              </span>
+            )}
+          </div>
           <button
             type="button"
             onClick={logout}
@@ -72,7 +91,7 @@ export default function Layout({ children }) {
       <header className="glass-chrome sticky top-0 z-30 flex items-center gap-3 border-b border-white/[0.06] px-4 py-3 lg:hidden">
         <Brand />
         <nav aria-label="Navigation principale" className="ml-auto flex gap-1">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink key={item.to} to={item.to} className={navClass} aria-label={item.label}>
               <Icon name={item.icon} size={17} />
               <span className="hidden sm:inline">{item.label}</span>

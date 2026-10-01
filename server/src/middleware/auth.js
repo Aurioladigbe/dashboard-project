@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { prisma } from "../config/db.js";
 
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -23,9 +24,27 @@ export function requireAuth(req, res, next) {
   }
 }
 
-export function requireAdmin(req, res, next) {
-  if (req.user?.role !== "ADMIN") {
-    return res.status(403).json({ error: "Reserve aux administrateurs" });
+export async function requireAdmin(req, res, next) {
+  if (req.user?.role === "ADMIN") {
+    return next();
   }
-  next();
+
+  // Si le token JWT de session a été généré avant une promotion en base de données,
+  // on vérifie en direct le rôle actuel de l'utilisateur dans PostgreSQL.
+  if (req.user?.id) {
+    try {
+      const freshUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { role: true },
+      });
+      if (freshUser?.role === "ADMIN") {
+        req.user.role = "ADMIN";
+        return next();
+      }
+    } catch {
+      // Erreur de connexion DB éventuelle -> rejet sécurisé par défaut
+    }
+  }
+
+  return res.status(403).json({ error: "Réservé aux administrateurs" });
 }

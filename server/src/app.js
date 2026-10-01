@@ -3,6 +3,7 @@ import cors from "cors";
 import "dotenv/config";
 
 import aboutRouter from "./routes/about.js";
+import adminRouter from "./routes/admin.js";
 import authRouter from "./routes/auth.js";
 import servicesRouter from "./routes/services.js";
 import widgetsRouter from "./routes/widgets.js";
@@ -27,6 +28,7 @@ app.use(express.json());
 // Route exigee par le sujet : GET /about.json
 app.use("/about.json", aboutRouter);
 
+app.use("/api/admin", adminRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/widgets", widgetsRouter);
