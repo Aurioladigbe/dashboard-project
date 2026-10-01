@@ -92,8 +92,8 @@ Le frontend affiche le champ `error` directement à l'utilisateur : il doit donc
 | `github:repo_list` | `[{ name, description, stars, url, updatedAt }]` | ✅ serveur |
 | `rss:article_list` | `[{ title, link, publishedAt, summary }]` | ✅ serveur |
 | `rss:feed_preview` | `{ feedTitle, title, link, publishedAt, summary }` | ✅ serveur |
-| `crypto:price` | `{ coin, currency, price, change24h }` | 🟡 **à implémenter côté serveur** |
-| `crypto:price_history` | `{ coin, currency, points: [{ date, price }] }` | 🟡 **à implémenter côté serveur** |
+| `crypto:price` | `{ coin, currency, price, change24h }` | ✅ serveur |
+| `crypto:price_history` | `{ coin, currency, points: [{ date, price }] }` | ✅ serveur |
 
 ### Contrat proposé pour le service crypto (déjà géré par le frontend)
 - `currency` : code en minuscules (`"usd"`, `"eur"`, `"gbp"`), le même que celui reçu dans `config.currency`.

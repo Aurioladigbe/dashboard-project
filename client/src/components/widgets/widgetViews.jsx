@@ -92,8 +92,7 @@ function WeatherForecast({ data }) {
 }
 
 /* ───────── Crypto ─────────
-   Le backend n'a pas encore de service crypto : ces vues suivent le contrat
-   de docs/api-contracts.md ("Formes de données des widgets"). */
+   Vues connectées au service crypto (CoinGecko) selon le contrat de docs/api-contracts.md */
 
 function Change({ value, suffix, digits = 2 }) {
   const up = value >= 0;

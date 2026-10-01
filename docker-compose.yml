@@ -22,14 +22,19 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - ./server/.env
+      - path: ./server/.env
+        required: false
     environment:
-      # Seule DATABASE_URL doit rester forcee ici : a l'interieur du reseau Docker
-      # le nom d'hote de la base est "db" (nom du service), alors que .env.example
-      # met "localhost" pour un usage hors Docker (ex: Prisma Studio en local).
-      # JWT_SECRET et PORT viennent desormais de server/.env via env_file, pour ne
-      # pas ecraser silencieusement la valeur que chacun met dans son .env local.
-      DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
+      # DATABASE_URL pointe vers le conteneur PostgreSQL "db" au sein du reseau Docker
+      DATABASE_URL: ${DATABASE_URL:-postgresql://dashboard:dashboard@db:5432/dashboard}
+      PORT: ${PORT:-8080}
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-epitech-2026}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      CLIENT_BASE_URL: ${CLIENT_BASE_URL:-http://localhost:8081}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
     volumes:
       - ./server/src:/app/src
       - ./server/prisma:/app/prisma
