@@ -31,6 +31,7 @@ services:
       # pas ecraser silencieusement la valeur que chacun met dans son .env local.
       DATABASE_URL: postgresql://dashboard:dashboard@db:5432/dashboard
     volumes:
+      - ./server/src:/app/src
       - ./server/prisma:/app/prisma
     depends_on:
       db:

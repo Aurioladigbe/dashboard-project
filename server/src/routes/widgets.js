@@ -33,8 +33,10 @@ const WIDGET_SELECT = {
 const WIDGET_DATA_HANDLERS = {
   "weather:city_temperature": (config) => getCurrentTemperature(config.city),
   "weather:forecast": (config) => getForecast(config.city, config.days),
-  "github:recent_commits": (config) => getRecentCommits(config.repo, config.count),
-  "github:repo_list": (config) => getRepoList(config.username, config.sort),
+  "github:recent_commits": (config, widget, context) =>
+    getRecentCommits(config.repo, config.count, context?.token),
+  "github:repo_list": (config, widget, context) =>
+    getRepoList(config.username, config.sort, context?.token),
   "rss:article_list": (config) => getArticleList(config.link, config.number),
   "rss:feed_preview": (config) => getFeedPreview(config.link),
 };
@@ -90,8 +92,24 @@ router.get("/:id/data", async (req, res) => {
     });
   }
 
+  let token = null;
+  if (widget.service === "github") {
+    const subscription = await prisma.serviceSubscription.findUnique({
+      where: { userId_service: { userId: req.user.id, service: "github" } },
+    });
+    if (!subscription) {
+      return res.status(403).json({
+        error: "Vous devez d'abord vous abonner au service github avec un token",
+      });
+    }
+    token = subscription.credentials?.token || null;
+  }
+
   try {
-    const data = await handler(widget.config, widget, req.user);
+    const data = await handler(widget.config, widget, {
+      token,
+      user: req.user,
+    });
     return res.json({ data });
   } catch (err) {
     const status = err.status || 502;

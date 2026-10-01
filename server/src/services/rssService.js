@@ -1,7 +1,8 @@
 import Parser from "rss-parser";
+import { sharedCache } from "./cacheService.js";
 
 const parser = new Parser({
-  timeout: 10000,
+  timeout: 8000,
 });
 
 const MAX_SUMMARY_LENGTH = 250;
@@ -10,6 +11,68 @@ function createServiceError(message, status) {
   const err = new Error(message);
   err.status = status;
   return err;
+}
+
+/**
+ * Rejette les URLs pointant vers localhost, 127.0.0.1, ::1,
+ * les plages IP privées (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16),
+ * et les noms d'hôtes internes Docker (db, server, client).
+ * @param {string|URL} inputUrl
+ * @returns {boolean} true si l'URL est privée ou locale (à bloquer)
+ */
+export function isPrivateOrLocalUrl(inputUrl) {
+  let parsed;
+  try {
+    parsed = inputUrl instanceof URL ? inputUrl : new URL(inputUrl);
+  } catch {
+    return true;
+  }
+
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  // Hostnames locaux et services internes Docker
+  const blockedHosts = new Set(["localhost", "db", "server", "client"]);
+  if (
+    blockedHosts.has(hostname) ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".localhost")
+  ) {
+    return true;
+  }
+
+  // IPv6 loopback / local
+  if (
+    hostname === "::1" ||
+    hostname === "::" ||
+    hostname.startsWith("fe80:") ||
+    hostname.startsWith("fc") ||
+    hostname.startsWith("fd")
+  ) {
+    return true;
+  }
+
+  // IPv4 validation (plages privées & réservées)
+  const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const [, aStr, bStr, cStr, dStr] = ipv4Match;
+    const a = Number(aStr);
+    const b = Number(bStr);
+    const c = Number(cStr);
+    const d = Number(dStr);
+
+    if ([a, b, c, d].some((octet) => octet < 0 || octet > 255)) {
+      return true;
+    }
+
+    if (a === 0) return true; // 0.0.0.0/8
+    if (a === 127) return true; // 127.0.0.0/8 (Loopback)
+    if (a === 10) return true; // 10.0.0.0/8 (Private)
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12 (Private)
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16 (Private)
+    if (a === 169 && b === 254) return true; // 169.254.0.0/16 (Link-local & cloud metadata)
+  }
+
+  return false;
 }
 
 function validateFeedUrl(feedUrl) {
@@ -32,6 +95,10 @@ function validateFeedUrl(feedUrl) {
       "L'URL du flux RSS doit utiliser le protocole http ou https",
       400
     );
+  }
+
+  if (isPrivateOrLocalUrl(parsed)) {
+    throw createServiceError("URL de flux non autorisée", 400);
   }
 
   return parsed.toString();
@@ -61,6 +128,14 @@ function formatArticle(item) {
 async function fetchAndParseFeed(feedUrl) {
   const validUrl = validateFeedUrl(feedUrl);
 
+  const cached = sharedCache.get(validUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
   let response;
   try {
     response = await fetch(validUrl, {
@@ -69,13 +144,21 @@ async function fetchAndParseFeed(feedUrl) {
         Accept:
           "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
       },
-      signal: AbortSignal.timeout(10000),
+      signal: controller.signal,
     });
   } catch (err) {
+    if (err.name === "AbortError" || controller.signal.aborted) {
+      throw createServiceError(
+        "Le service externe met trop de temps à répondre",
+        504
+      );
+    }
     throw createServiceError(
       `Impossible de joindre le flux RSS : ${err.message}`,
       502
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (response.status === 404) {
@@ -97,7 +180,9 @@ async function fetchAndParseFeed(feedUrl) {
   }
 
   try {
-    return await parser.parseString(xmlText);
+    const parsedFeed = await parser.parseString(xmlText);
+    sharedCache.set(validUrl, parsedFeed, 60);
+    return parsedFeed;
   } catch {
     throw createServiceError(
       `L'URL fournie ne pointe pas vers un flux RSS/Atom XML valide : "${validUrl}"`,

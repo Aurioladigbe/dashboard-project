@@ -1,9 +1,9 @@
 FROM node:20-alpine
-RUN apk add --no-cache openssl
 WORKDIR /app
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 RUN apk add --no-cache openssl
-COPY package.json ./
-RUN npm install
+COPY package*.json ./
+RUN npm install --no-audit --no-fund --loglevel=info
 COPY . .
 RUN npx prisma generate
 EXPOSE 8080

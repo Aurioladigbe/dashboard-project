@@ -1,3 +1,5 @@
+import { sharedCache } from "./cacheService.js";
+
 const GITHUB_API_BASE_URL = "https://api.github.com";
 const VALID_REPO_SORTS = ["updated", "created", "pushed", "full_name"];
 
@@ -7,20 +9,44 @@ function createServiceError(message, status) {
   return err;
 }
 
-async function fetchGitHub(url, notFoundMessage) {
+async function fetchGitHub(url, notFoundMessage, token = null) {
+  const cacheKey = token ? `${url}#${token}` : url;
+  const cached = sharedCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
   let response;
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "Dashboard-Epitech",
+  };
+  if (token && typeof token === "string" && token.trim()) {
+    headers.Authorization = `Bearer ${token.trim()}`;
+  }
+
   try {
-    response = await fetch(url, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        "User-Agent": "Dashboard-Epitech",
-      },
-    });
+    response = await fetch(url, { headers, signal: controller.signal });
   } catch (err) {
+    if (err.name === "AbortError" || controller.signal.aborted) {
+      throw createServiceError(
+        "Le service externe met trop de temps à répondre",
+        504
+      );
+    }
     throw createServiceError(
       `Service GitHub injoignable : ${err.message}`,
       502
     );
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (response.status === 401) {
+    throw createServiceError("Token GitHub invalide ou expiré", 401);
   }
 
   if (response.status === 404) {
@@ -60,7 +86,9 @@ async function fetchGitHub(url, notFoundMessage) {
   }
 
   try {
-    return await response.json();
+    const data = await response.json();
+    sharedCache.set(cacheKey, data, 60);
+    return data;
   } catch {
     throw createServiceError(
       "Réponse invalide reçue depuis l'API GitHub",
@@ -73,9 +101,10 @@ async function fetchGitHub(url, notFoundMessage) {
  * Récupère les N derniers commits d'un dépôt GitHub ("owner/repo").
  * @param {string} repoFullName
  * @param {number|string} count
+ * @param {string|null} [token]
  * @returns {Promise<Array<{ sha: string, message: string, author: string, date: string | null }>>}
  */
-export async function getRecentCommits(repoFullName, count) {
+export async function getRecentCommits(repoFullName, count, token = null) {
   if (!repoFullName || typeof repoFullName !== "string") {
     throw createServiceError(
       'Le paramètre repo est requis (format "owner/repo")',
@@ -105,7 +134,8 @@ export async function getRecentCommits(repoFullName, count) {
 
   const data = await fetchGitHub(
     url,
-    `Dépôt GitHub introuvable : "${owner}/${repo}"`
+    `Dépôt GitHub introuvable : "${owner}/${repo}"`,
+    token
   );
 
   if (!Array.isArray(data)) {
@@ -127,9 +157,10 @@ export async function getRecentCommits(repoFullName, count) {
  * Récupère la liste des dépôts publics d'un utilisateur GitHub.
  * @param {string} username
  * @param {string} sort
+ * @param {string|null} [token]
  * @returns {Promise<Array<{ name: string, description: string | null, stars: number, url: string, updatedAt: string }>>}
  */
-export async function getRepoList(username, sort = "updated") {
+export async function getRepoList(username, sort = "updated", token = null) {
   if (!username || typeof username !== "string" || !username.trim()) {
     throw createServiceError("Le paramètre username est requis", 400);
   }
@@ -151,7 +182,8 @@ export async function getRepoList(username, sort = "updated") {
 
   const data = await fetchGitHub(
     url,
-    `Utilisateur GitHub introuvable : "${cleanUsername}"`
+    `Utilisateur GitHub introuvable : "${cleanUsername}"`,
+    token
   );
 
   if (!Array.isArray(data)) {

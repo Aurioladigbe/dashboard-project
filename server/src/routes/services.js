@@ -43,10 +43,23 @@ router.post("/:service/subscribe", requireAuth, async (req, res) => {
     return res.status(404).json({ error: `Service inconnu : "${service}"` });
   }
 
+  if (service === "github") {
+    if (
+      !credentials?.token ||
+      typeof credentials.token !== "string" ||
+      !credentials.token.trim()
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Un token GitHub est requis pour ce service" });
+    }
+  }
+
   const subscription = await prisma.serviceSubscription.upsert({
     where: { userId_service: { userId: req.user.id, service } },
     update: { credentials },
     create: { userId: req.user.id, service, credentials },
+    select: { id: true, service: true, createdAt: true },
   });
 
   res.status(201).json({ subscription });

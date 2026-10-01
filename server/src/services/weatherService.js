@@ -1,3 +1,5 @@
+import { sharedCache } from "./cacheService.js";
+
 const GEOCODING_BASE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 
@@ -8,14 +10,30 @@ function createServiceError(message, status) {
 }
 
 async function fetchOpenMeteo(url) {
+  const cached = sharedCache.get(url);
+  if (cached) {
+    return cached;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
   let response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, { signal: controller.signal });
   } catch (err) {
+    if (err.name === "AbortError" || controller.signal.aborted) {
+      throw createServiceError(
+        "Le service externe met trop de temps à répondre",
+        504
+      );
+    }
     throw createServiceError(
       `Service météo Open-Meteo injoignable : ${err.message}`,
       502
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {
@@ -26,7 +44,9 @@ async function fetchOpenMeteo(url) {
   }
 
   try {
-    return await response.json();
+    const data = await response.json();
+    sharedCache.set(url, data, 60);
+    return data;
   } catch {
     throw createServiceError(
       "Réponse invalide reçue depuis le service météo Open-Meteo",
