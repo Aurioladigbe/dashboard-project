@@ -42,6 +42,9 @@ export default function Login() {
     }
   }
 
+  const apiUrl = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+  const githubAuthUrl = `${apiUrl}/api/auth/github`;
+
   return (
     <AuthLayout
       title="Connexion"
@@ -56,7 +59,7 @@ export default function Login() {
     >
       <div className="space-y-4">
         <a
-          href="/api/auth/github"
+          href={githubAuthUrl}
           className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
         >
           <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">

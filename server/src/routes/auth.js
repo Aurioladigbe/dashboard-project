@@ -70,8 +70,13 @@ router.post("/register", authLimiter, async (req, res) => {
     data: { email, username, password: hashed, confirmed: false },
   });
 
-  const confirmToken = signConfirmationToken(user);
-  const confirmUrl = `${process.env.APP_BASE_URL}/api/auth/confirm/${confirmToken}`;
+  const appBaseUrl = (
+    process.env.APP_BASE_URL ||
+    process.env.API_URL ||
+    process.env.BACKEND_URL ||
+    "http://localhost:8080"
+  ).replace(/\/+$/, "");
+  const confirmUrl = `${appBaseUrl}/api/auth/confirm/${confirmToken}`;
 
   try {
     await sendConfirmationEmail(user.email, confirmUrl);
@@ -163,9 +168,16 @@ router.get("/github", authLimiter, (req, res) => {
     { expiresIn: "10m" }
   );
 
+  const appBaseUrl = (
+    process.env.APP_BASE_URL ||
+    process.env.API_URL ||
+    process.env.BACKEND_URL ||
+    "http://localhost:8080"
+  ).replace(/\/+$/, "");
+
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID,
-    redirect_uri: `${process.env.APP_BASE_URL}/api/auth/github/callback`,
+    redirect_uri: `${appBaseUrl}/api/auth/github/callback`,
     scope: "user:email,repo",
     state: signedState,
   });
@@ -175,7 +187,18 @@ router.get("/github", authLimiter, (req, res) => {
 // GET /api/auth/github/callback
 router.get("/github/callback", authLimiter, async (req, res) => {
   const { code, state, error: ghError, error_description } = req.query;
-  const clientUrl = process.env.CLIENT_BASE_URL || "http://localhost:8081";
+  const clientUrl = (
+    process.env.CLIENT_URL ||
+    process.env.CLIENT_BASE_URL ||
+    "http://localhost:8081"
+  ).replace(/\/+$/, "");
+
+  const appBaseUrl = (
+    process.env.APP_BASE_URL ||
+    process.env.API_URL ||
+    process.env.BACKEND_URL ||
+    "http://localhost:8080"
+  ).replace(/\/+$/, "");
 
   // Si l'utilisateur annule ou refuse l'autorisation sur GitHub
   if (ghError) {
@@ -223,7 +246,7 @@ router.get("/github/callback", authLimiter, async (req, res) => {
         client_id: process.env.GITHUB_CLIENT_ID,
         client_secret: process.env.GITHUB_CLIENT_SECRET,
         code,
-        redirect_uri: `${process.env.APP_BASE_URL}/api/auth/github/callback`,
+        redirect_uri: `${appBaseUrl}/api/auth/github/callback`,
       }),
     });
     const tokenData = await tokenResp.json();
